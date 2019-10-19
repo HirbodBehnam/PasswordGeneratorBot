@@ -63,7 +63,7 @@ func main() {
 			case "help":
 				msg := tgbotapi.NewMessage(update.Message.Chat.ID, "This bot helps you generate random passwords. **I DO NOT STORE ANYTHING ON MY SERVER**, you can read the source code. Also this bot uses `crypto/rand` to generate secure randoms for password.\nTo quickly generate password use /generate , it generates a 16 letter password with combination of letters and numbers\nIf you want to create a customizable password, use /password")
 				msg.ParseMode = "markdown"
-				_, _ = bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "This bot helps you generate random passwords. "))
+				_, _ = bot.Send(msg)
 			case "generate":
 				go func(id int64) {
 					//Generate a 16 length password with all alphabet and numbers
