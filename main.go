@@ -5,6 +5,7 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 	"github.com/patrickmn/go-cache"
 	"log"
+	"math/big"
 	"os"
 	"strconv"
 	"strings"
@@ -164,13 +165,13 @@ func GeneratePassword(length int, lowercase, uppercase, number, symbol bool) str
 	if symbol {
 		str += SYMBOLS
 	}
-	b := make([]byte, length)
-	_, _ = rand.Read(b)
 	//Memory shit
 	var sb strings.Builder
+	max := big.NewInt(int64(len(str)))
 	sb.Grow(length)
-	for _, k := range b {
-		sb.WriteByte(str[int(k)%len(str)])
+	for i := 0; i < length; i++ {
+		index, _ := rand.Int(rand.Reader, max)
+		sb.WriteByte(str[index.Int64()])
 	}
 	return sb.String()
 }
