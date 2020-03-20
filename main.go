@@ -3,10 +3,12 @@ package main
 import (
 	"crypto/rand"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
+	"github.com/patrickmn/go-cache"
 	"log"
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type UsersIn struct {
@@ -18,7 +20,7 @@ type UsersIn struct {
 	Special   bool
 }
 
-var users = make(map[int]*UsersIn)
+var users *cache.Cache
 
 const LettersLower = "qwertyuiopasdfghjklzxcvbnm"
 const LettersUpper = "QWERTYUIOPASDFGHJKLZXCVBNM"
@@ -48,6 +50,8 @@ func main() {
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
 
+	users = cache.New(5*time.Minute, 10*time.Minute)
+
 	updates, err := bot.GetUpdatesChan(u)
 
 	for update := range updates {
@@ -72,7 +76,7 @@ func main() {
 					_, _ = bot.Send(msg)
 				}(update.Message.Chat.ID)
 			case "password":
-				users[update.Message.From.ID] = &UsersIn{PageIn: 0, Length: 0, LowerCase: false, UpperCase: false, Numbers: false, Special: false}
+				users.Set(strconv.Itoa(update.Message.From.ID), &UsersIn{PageIn: 0, Length: 0, LowerCase: false, UpperCase: false, Numbers: false, Special: false}, cache.DefaultExpiration)
 				msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Select the length of your password(1-255)")
 				msg.ReplyMarkup = tgbotapi.NewRemoveKeyboard(true)
 				_, _ = bot.Send(msg)
@@ -80,8 +84,9 @@ func main() {
 				_, _ = bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Sorry this command is not recognized; Try /help"))
 			}
 		} else {
-			if _, ok := users[update.Message.From.ID]; ok {
-				switch users[update.Message.From.ID].PageIn {
+			if userT, ok := users.Get(strconv.Itoa(update.Message.From.ID)); ok {
+				user := userT.(*UsersIn)
+				switch user.PageIn {
 				case 0: //User should have entered the length of password
 					//Try to parse the password
 					num, err := strconv.Atoi(update.Message.Text)
@@ -93,32 +98,32 @@ func main() {
 						_, _ = bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Please enter a value less than 255 and more than zero"))
 						continue
 					}
-					users[update.Message.From.ID].Length = byte(num)
-					users[update.Message.From.ID].PageIn++
+					user.Length = byte(num)
+					user.PageIn++
 					//Inform user
 					msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Good. Do you want your password contain lower case characters? (a,b,c...)")
 					msg.ReplyMarkup = ynKeyboard
 					_, _ = bot.Send(msg)
 				case 1: //Should password contain lowercase values?
-					users[update.Message.From.ID].LowerCase = update.Message.Text == "Yes"
-					users[update.Message.From.ID].PageIn++
+					user.LowerCase = update.Message.Text == "Yes"
+					user.PageIn++
 					msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Do you want your password contain upper case characters? (A,B,C...)")
 					msg.ReplyMarkup = ynKeyboard
 					_, _ = bot.Send(msg)
 				case 2: //Should password contain uppercase values?
-					users[update.Message.From.ID].UpperCase = update.Message.Text == "Yes"
-					users[update.Message.From.ID].PageIn++
+					user.UpperCase = update.Message.Text == "Yes"
+					user.PageIn++
 					msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Do you want your password contain numbers characters? (1,2,3...)")
 					msg.ReplyMarkup = ynKeyboard
 					_, _ = bot.Send(msg)
 				case 3: //Should password contain numbers?
-					users[update.Message.From.ID].Numbers = update.Message.Text == "Yes"
-					users[update.Message.From.ID].PageIn++
+					user.Numbers = update.Message.Text == "Yes"
+					user.PageIn++
 					msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Do you want your password contain special characters? (!,#,%...)")
 					msg.ReplyMarkup = ynKeyboard
 					_, _ = bot.Send(msg)
 				case 4: //Should password contain symbols?
-					users[update.Message.From.ID].Special = update.Message.Text == "Yes"
+					user.Special = update.Message.Text == "Yes"
 					//Generate password
 					go func(in UsersIn, chatID int64) {
 						msg := tgbotapi.NewMessage(chatID, "")
@@ -135,8 +140,8 @@ func main() {
 							msg.Text = "Error sending password: " + err.Error()
 							_, _ = bot.Send(msg)
 						}
-					}(*users[update.Message.From.ID], update.Message.Chat.ID)
-					delete(users, update.Message.From.ID)
+					}(*user, update.Message.Chat.ID)
+					users.Delete(strconv.Itoa(update.Message.From.ID))
 				}
 			} else {
 				_, _ = bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Sorry this command is not recognized; Try /help"))

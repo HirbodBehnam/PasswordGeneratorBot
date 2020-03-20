@@ -14,6 +14,7 @@ http://t.me/pass_generator_bot
 git clone https://github.com/HirbodBehnam/PasswordGeneratorBot
 cd PasswordGeneratorBot
 go get github.com/go-telegram-bot-api/telegram-bot-api
+go get github.com/patrickmn/go-cache
 go build main.go
 ```
 ### Running
