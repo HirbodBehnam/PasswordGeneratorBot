@@ -28,7 +28,7 @@ const LettersUpper = "QWERTYUIOPASDFGHJKLZXCVBNM"
 const NUMBERS = "1234567890"
 const SYMBOLS = `!@#$%^&*()_+=-[]{};:'"\|,./~`
 
-const VERSION = "1.0.0"
+const VERSION = "1.1.0"
 
 var ynKeyboard = tgbotapi.NewReplyKeyboard(
 	tgbotapi.NewKeyboardButtonRow(
